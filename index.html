@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🎲 每日快乐盲盒</title>
+  <meta name="description" content="每天给你加点料——运势、毒汤、奇奇怪怪的日子，一键分享快乐！">
+  <meta property="og:title" content="🎲 每日快乐盲盒">
+  <meta property="og:description" content="测测你今天什么运势？刷新一下，生活就有新惊喜！">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#1a1a2e">
+  <!-- Zero external CDN dependencies — pure frontend, works offline even in China! -->
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: #0f0c29;
+      color: #fff;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ===== Animated Background ===== */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      z-index: -2;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(123, 104, 238, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(255, 107, 53, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(0, 200, 83, 0.08) 0%, transparent 50%);
+      z-index: -1;
+      animation: bgShift 8s ease-in-out infinite alternate;
+    }
+    @keyframes bgShift {
+      0% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    /* Floating particles */
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 50%;
+      animation: float linear infinite;
+    }
+    @keyframes float {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ===== App Container ===== */
+    #app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px 16px 0;
+    }
+
+    /* ===== Header ===== */
+    header {
+      text-align: center;
+      padding: 12px 0 8px;
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #f093fb, #f5576c, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 1px;
+    }
+    header .subtitle {
+      display: block;
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+      font-weight: 300;
+    }
+
+    /* ===== Timer / Auto-refresh hint ===== */
+    .timer-bar {
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      padding: 2px 0 8px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== Main Card Area ===== */
+    .card-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      padding: 4px 0;
+    }
+
+    #card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 28px 24px 24px;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: translateY(0);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    #card.fade-out {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+
+    /* Card content shared */
+    .card-emoji {
+      font-size: 52px;
+      text-align: center;
+      margin-bottom: 10px;
+      line-height: 1;
+    }
+    .card-title {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    .card-subtitle {
+      text-align: center;
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 16px;
+    }
+    .card-body {
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.85);
+    }
+    .card-body .line {
+      padding: 5px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .card-body .line .label {
+      color: rgba(255,255,255,0.4);
+      min-width: 60px;
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+    .card-body .line .value {
+      flex: 1;
+    }
+    .card-body .highlight {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .color-swatch {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 6px;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    /* Soup specific */
+    .soup-text {
+      font-size: 18px;
+      line-height: 1.6;
+      text-align: center;
+      padding: 12px 0 8px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 400;
+      letter-spacing: 0.3px;
+    }
+    .soup-tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      padding: 3px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 12px;
+    }
+
+    /* Day specific */
+    .day-big {
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .day-identities {
+      padding: 12px 0;
+    }
+    .day-identity-item {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .day-identity-item .emoji { font-size: 24px; }
+    .day-footer {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 8px;
+    }
+
+    /* ===== Actions ===== */
+    .actions {
+      flex-shrink: 0;
+      display: flex;
+      gap: 12px;
+      padding: 10px 0 8px;
+      justify-content: center;
+    }
+    .actions button {
+      flex: 1;
+      max-width: 180px;
+      padding: 14px 0;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .actions button:active {
+      transform: scale(0.95);
+    }
+    #refreshBtn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    #refreshBtn:active {
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+    #shareBtn {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    #shareBtn:active {
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* ===== Tab Bar ===== */
+    nav.tabs {
+      flex-shrink: 0;
+      display: flex;
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px 16px 0 0;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: none;
+      overflow: hidden;
+      margin: 0 -16px;
+    }
+    nav.tabs button {
+      flex: 1;
+      padding: 14px 0;
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,0.4);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      touch-action: manipulation;
+    }
+    nav.tabs button.active {
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+    }
+    nav.tabs button.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 20%;
+      right: 20%;
+      height: 3px;
+      background: linear-gradient(90deg, #f093fb, #f5576c);
+      border-radius: 3px 3px 0 0;
+    }
+    nav.tabs button:active {
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.4s ease;
+      pointer-events: none;
+      z-index: 100;
+      white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 400px) {
+      #app { padding: 12px 12px 0; }
+      header h1 { font-size: 22px; }
+      #card { padding: 20px 16px 18px; border-radius: 20px; }
+      .card-emoji { font-size: 42px; }
+      .card-title { font-size: 19px; }
+      .card-body { font-size: 14px; }
+      .actions button { font-size: 14px; padding: 12px 0; }
+      nav.tabs button { font-size: 13px; padding: 12px 0; }
+      .soup-text { font-size: 16px; }
+      .day-big { font-size: 38px; }
+    }
+
+    @media (max-height: 640px) {
+      header { padding: 6px 0 2px; }
+      header h1 { font-size: 20px; }
+      header .subtitle { font-size: 11px; }
+      .timer-bar { display: none; }
+      #card { padding: 16px 14px 14px; }
+      .card-emoji { font-size: 34px; margin-bottom: 4px; }
+      .card-title { font-size: 17px; }
+      .card-subtitle { font-size: 11px; margin-bottom: 8px; }
+      .card-body .line { padding: 3px 0; }
+      nav.tabs button { padding: 10px 0; font-size: 13px; }
+      .actions { padding: 6px 0; }
+      .actions button { padding: 10px 0; font-size: 13px; }
+      .soup-text { font-size: 15px; padding: 4px 0; }
+      .day-big { font-size: 30px; }
+      .day-identity-item { padding: 6px 10px; font-size: 13px; }
+    }
+
+    /* Landscape orientation */
+    @media (orientation: landscape) and (max-height: 500px) {
+      #app { flex-direction: row; flex-wrap: wrap; padding: 8px; }
+      header { width: 100%; padding: 4px 0; }
+      header h1 { font-size: 16px; }
+      header .subtitle { display: none; }
+      .timer-bar { display: none; }
+      .card-wrapper { flex: 1; min-width: 0; padding: 4px; }
+      #card { padding: 12px; border-radius: 16px; }
+      .card-emoji { font-size: 24px; margin-bottom: 2px; }
+      .card-title { font-size: 14px; }
+      .card-subtitle { font-size: 10px; margin-bottom: 4px; }
+      .card-body { font-size: 12px; }
+      .card-body .line { padding: 1px 0; gap: 4px; }
+      .card-body .line .label { min-width: 40px; font-size: 11px; }
+      .soup-text { font-size: 13px; padding: 2px 0; }
+      .actions { padding: 4px; gap: 8px; }
+      .actions button { padding: 6px 12px; font-size: 12px; max-width: 120px; }
+      nav.tabs { margin: 0 -8px; border-radius: 12px 12px 0 0; }
+      nav.tabs button { padding: 6px 0; font-size: 11px; }
+      .day-big { font-size: 22px; }
+      .day-identity-item { padding: 4px 8px; font-size: 11px; margin-bottom: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Particles -->
+  <div class="particles" id="particles"></div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- App -->
+  <div id="app">
+    <header>
+      <h1>🎲 每日快乐盲盒</h1>
+      <span class="subtitle">刷新一下，生活就有新惊喜</span>
+    </header>
+
+    <div class="timer-bar" id="timerBar">⏱ 每 30 分钟自动刷新 · 长按卡片保存</div>
+
+    <div class="card-wrapper">
+      <div id="card">
+        <!-- Rendered by JavaScript -->
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="refreshBtn">🔄 换一个</button>
+      <button id="shareBtn">📤 分享</button>
+    </div>
+
+    <nav class="tabs">
+      <button data-tab="fortune" class="active">🎲 运势</button>
+      <button data-tab="soup">🍜 毒汤</button>
+      <button data-tab="day">📅 日子</button>
+    </nav>
+  </div>
+
+  <script>
+    // ========================================================================
+    //  CONTENT LIBRARIES — Pure frontend, zero backend, works offline!
+    // ========================================================================
+
+    // -------- 1. FORTUNE (运势) --------
+    const FORTUNES = {
+      emojis: ['🌟', '✨', '🎯', '🌈', '🦋', '🌙', '⭐', '🔥', '💫', '🍀'],
+      ranks: [
+        { stars: '⭐⭐⭐⭐⭐', label: '天选之子', color: '#FFD700' },
+        { stars: '⭐⭐⭐⭐',  label: '小确幸',   color: '#4CAF50' },
+        { stars: '⭐⭐⭐',   label: '平平无奇', color: '#90A4AE' },
+        { stars: '⭐⭐',    label: '有点意思', color: '#FF9800' },
+        { stars: '⭐',      label: '反向锦鲤', color: '#E91E63' },
+      ],
+      colors: [
+        '#FF6B35', '#7B68EE', '#00C853', '#FF1493', '#00BCD4',
+        '#FFD700', '#E040FB', '#FF4081', '#40C4FF', '#76FF03',
+        '#FFAB40', '#EA80FC', '#69F0AE', '#FF80AB', '#82B1FF',
+      ],
+      buffs: [
+        '你说话会自带双关，今天谁都听不懂你在暗示什么',
+        '你的影子会比你先到家，因为你走路太慢',
+        '今天会捡到钱 —— 别高兴太早，是游戏里的',
+        '手机电量会在最需要的时候只剩 1%',
+        '走在路上会突然想起五年前尴尬的事',
+        '今天运气好到不真实，建议去买彩票（别买太多）',
+        '会遇到一个跟你穿同款的人，建议先说"品味不错"',
+        '今天的头发会异常听话 —— 注意，这是反常现象',
+        '你将对着一杯奶茶发呆 3 分钟，思考人生',
+        '今天输入法会自动纠正你的每句话，越描越黑',
+        '今天会莫名其妙地想唱歌，而且停不下来',
+        '你点的外卖会比预计晚到，但会多送一根烤肠',
+        '今天你的微信步数会恰好停在 8888',
+        '会收到一个意想不到的红包，金额不超过 5 块',
+        '今天你瞪谁谁打喷嚏',
+        '你出门会遇到一只猫，它会用看傻子的眼神看你',
+        '今天你的冷笑话命中率提升 300%',
+        '电梯一定会停在你的楼层，但门一开里面全是人',
+      ],
+      debuffs: [
+        '今天你煮泡面一定会没有叉子',
+        '你发的消息会刚好被对方看到但不想回',
+        '今天你系鞋带一定会有人跟你说话',
+        '出门忘带的东西一定是最重要的那个',
+        '今天每一个绿灯你都会刚好错过',
+        '你刚要躺下就会想起来还有事没做',
+        '今天你取快递一定排最慢那队',
+        '今天你想吃的东西一定都不营业',
+        '今天你的手机通知栏一定有个消不掉的红点',
+        '你刚洗完车就会下雨 —— 如果没车，你刚洗头就会出门被风吹',
+        '今天你发的表情包一定是对方没有的那个',
+        '今天你想夸人，但张嘴就变成了吐槽',
+      ],
+      numbers: ['3', '7', '13', '21', '42', 'π', '∞', '0', '520', '996', '404', '233'],
+      directions: ['东南方', '西北方', '正南方', '正北方', '东北方', '西南方', '你家的方向', '随便，反正你也不出门'],
+      advices: [
+        '今天适合穿两只不一样的袜子',
+        '建议正着念这句话',
+        '今天不管谁叫你出门，都说"改天"',
+        '吃饭的时候不要看手机 —— 会少吃三口的',
+        '今天的幸运动作是伸个懒腰',
+        '建议对镜子说三遍"我最棒"（然后笑场）',
+        '今天遇到选择题就选 C',
+        '建议把手机桌面截图然后设置成锁屏，再锁屏截图设成桌面 —— 循环三次可消灾',
+        '今天可以理直气壮地说"我懒"',
+        '今天重要的是心态 —— 反正也赚不到钱，开心就好',
+      ],
+    };
+
+    // -------- 2. POISON SOUP (毒鸡汤) --------
+    const SOUPS = [
+      { text: '你并不是一无所有，你还有病', tag: '扎心' },
+      { text: '努力不一定有回报，但不努力一定很舒服', tag: '人间清醒' },
+      { text: '上帝关上一扇门，还会用门夹你的脑子', tag: '暗黑' },
+      { text: '三分天注定，七分靠打拼，剩下九十分靠颜值', tag: '现实' },
+      { text: '你以为有钱人很快乐吗？他们的快乐你根本想象不到', tag: '扎心' },
+      { text: '只要坚持，没有什么事是办不成的…… 除了那些办不成的', tag: '人间清醒' },
+      { text: '那些杀不死你的，会让你变得更奇怪', tag: '暗黑' },
+      { text: '有时候你不努力一下，都不知道什么叫绝望', tag: '毒' },
+      { text: '你所谓的身心俱疲，其实就是闲的', tag: '扎心' },
+      { text: '别灰心，人生就是这样，起起落落落落落落落', tag: '人间清醒' },
+      { text: '生活不止眼前的苟且，还有明天的苟且和后天的苟且', tag: '现实' },
+      { text: '你每天都觉得自己很普通，其实你想多了，你真的很普通', tag: '扎心' },
+      { text: '比你有钱的人还比你努力，那你努力还有什么用', tag: '毒' },
+      { text: '失败是成功之母，但成功六亲不认', tag: '人间清醒' },
+      { text: '世上无难事，只要肯放弃', tag: '暗黑' },
+      { text: '为什么总是遇到渣男/渣女？因为你好骗啊', tag: '扎心' },
+      { text: '你不是社交恐惧，你只是单纯的丑和穷', tag: '毒' },
+      { text: '今天解决不了的事情，别着急 —— 明天也解决不了', tag: '人间清醒' },
+      { text: '你以为他是你的太阳，结果他只是想晒死你', tag: '暗黑' },
+      { text: '人生苦短，我用 Python —— 然后发现 bug 更多了', tag: '程序员特供' },
+      { text: '你的 Bug 不是不会重现，只是还没到演示的时候', tag: '程序员特供' },
+      { text: '这个需求做不了 —— 然后你发现是你做不了，不是需求做不了', tag: '程序员特供' },
+      { text: '脱发不是程序员的宿命，但加班是', tag: '程序员特供' },
+      { text: '爱情就像代码 review，你觉得自己写得挺好，但在别人眼里全是屎', tag: '程序员特供' },
+      { text: '你的青春痘在替你负重前行', tag: '扎心' },
+      { text: '今天不减肥，明天徒伤悲 —— 但明天还会有新的明天', tag: '人间清醒' },
+      { text: '你不是懒，你只是不想做无用功 —— 虽然做了也是无用功', tag: '暗黑' },
+      { text: '别人是祖国的花朵，你是那朵不知道什么品种的野花', tag: '扎心' },
+      { text: '你不是怀才不遇，你是怀才不够', tag: '毒' },
+      { text: '所谓成熟，就是学会在失望中假装坚强', tag: '人间清醒' },
+      { text: '你的人生就像一部手机 —— 出厂即落后，还越用越卡', tag: '暗黑' },
+      { text: '你以为是选择困难症，其实只是因为穷', tag: '现实' },
+      { text: '每一次你发誓要早睡，都是对你意志力的一个考验 —— 而你每次都失败了', tag: '人间清醒' },
+      { text: '没有人能让你生气，除非你自己愿意 —— 但你偏偏就愿意', tag: '扎心' },
+      { text: '你以为自己是主角，其实你只是个 NPC', tag: '暗黑' },
+      { text: '加油！你是最胖的', tag: '毒' },
+      { text: '你今天的心情指数：就像你手机电量一样，飞速下降', tag: '现实' },
+      { text: '别熬夜了，反正也没有人找你', tag: '扎心' },
+      { text: '人生就像骑自行车，要用力蹬才不会倒 —— 但有的人天生就坐汽车', tag: '人间清醒' },
+      { text: '你不是脾气不好，你是没本事还脾气大', tag: '毒' },
+    ];
+
+    // -------- 3. WHAT DAY IS TODAY (今天是什么日子) --------
+    const DAYS = {
+      animals: [
+        '🦊 世界狐狸日', '🐼 熊猫发呆日', '🦄 独角兽幻想日', '🐧 企鹅散步日',
+        '🦉 猫头鹰思考日', '🐱 猫咪统治日', '🐶 狗狗感谢日', '🐰 兔子跳跃日',
+        '🐸 青蛙王子日', '🦋 蝴蝶效应日', '🐢 乌龟慢生活日', '🦀 螃蟹横行日',
+        '🐙 章鱼多才多艺日', '🦅 雄鹰展翅日', '🐝 蜜蜂勤劳日', '🦍 大猩猩捶胸日',
+        '🦜 鹦鹉学舌日', '🐬 海豚微笑日', '🦥 树懒躺平日', '🐘 大象记仇日',
+      ],
+      foods: [
+        '🍜 泡面发明纪念日', '🥟 饺子感谢日', '☕ 咖啡因万岁日', '🍕 披萨分享日',
+        '🍦 冰淇淋融化日', '🍔 汉堡叠叠乐日', '🌮 塔可星期二（不管今天周几）',
+        '🍣 寿司旋转日', '🥤 奶茶续命日', '🍩 甜甜圈甜甜日', '🍪 饼干泡奶日',
+        '🧋 珍珠奶茶日', '🍰 蛋糕虚假健康日', '🥐 可颂优雅日', '🌭 热狗无语日',
+        '🍿 电影必备日', '🥟 生煎包爆汁日', '🍱 便当仪式感日', '🥗 沙拉欺骗日',
+      ],
+      weird: [
+        '📦 纸箱诞生日', '🧦 穿两只不同袜子日', '💤 公开打哈欠日', '🪴 跟植物说话日',
+        '🧩 拼图失踪一块日', '🛌 赖床合法日', '📎 回形针发明日', '🎭 假装快乐日',
+        '🪥 刷手机日（不是刷牙）', '🧠 大脑短路日', '🫂 社恐出门日', '🎪 生活小丑日',
+        '🔄 重启人生幻想日', '🧐 自我怀疑日', '🫣 偷看别人朋友圈日',
+        '🎬 给自己加戏日', '🧹 拖延打扫日', '🪄 许愿不灵日', '🎠 原地转圈日',
+        '🧊 冷场日', '🫠 摆烂日', '🎯 立 Flag 必倒日', '🧗 给自己挖坑日',
+      ],
+      footers: [
+        '这绝对是有史以来最重要的一天（并没有）',
+        '联合国没说，但我宣布了',
+        '放假吗？想得美',
+        '今天适合发个朋友圈装不知道',
+        '今日不建议加班 —— 反正建议了也没用',
+        '今天最重要的任务就是：活着',
+        '今天宜：躺平 · 忌：努力',
+        '今天的历史由你创造（如果你愿意的话）',
+      ],
+    };
+
+    // ========================================================================
+    //  GENERATORS
+    // ========================================================================
+
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function generateFortune() {
+      const rank = pick(FORTUNES.ranks);
+      const color = pick(FORTUNES.colors);
+      const buff = pick(FORTUNES.buffs);
+      const debuff = pick(FORTUNES.debuffs);
+      const number = pick(FORTUNES.numbers);
+      const direction = pick(FORTUNES.directions);
+      const advice = pick(FORTUNES.advices);
+      const emoji = pick(FORTUNES.emojis);
+      const luckyAnimal = pick(DAYS.animals);
+
+      return { emoji, rank, color, buff, debuff, number, direction, advice, luckyAnimal };
+    }
+
+    function generateSoup() {
+      return pick(SOUPS);
+    }
+
+    function generateDay() {
+      const count = 2 + Math.floor(Math.random() * 2); // 2-3 items
+      const animal = pick(DAYS.animals);
+      const food = pick(DAYS.foods);
+      const weird = pick(DAYS.weird);
+      const items = [animal, food, weird];
+      // Shuffle and pick `count`
+      for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+      }
+      const footer = pick(DAYS.footers);
+      return { items: items.slice(0, count), footer };
+    }
+
+    // ========================================================================
+    //  STATE
+    // ========================================================================
+
+    let currentTab = 'fortune';
+    let currentData = null;
+
+    // ========================================================================
+    //  RENDERERS
+    // ========================================================================
+
+    function renderFortune(data) {
+      return `
+        <div class="card-emoji">${data.emoji}</div>
+        <div class="card-title" style="color: ${data.rank.color}">${data.rank.stars}</div>
+        <div class="card-subtitle">${data.rank.label} · 今日运势</div>
+        <div class="card-body">
+          <div class="line">
+            <span class="label">幸运色</span>
+            <span class="value">
+              <span class="color-swatch" style="background:${data.color}"></span>
+              <span class="highlight" style="background:${data.color}22; color:${data.color}">${data.color}</span>
+            </span>
+          </div>
+          <div class="line">
+            <span class="label">幸运数字</span>
+            <span class="value">${data.number}</span>
+          </div>
+          <div class="line">
+            <span class="label">幸运方向</span>
+            <span class="value">${data.direction}</span>
+          </div>
+          <div class="line">
+            <span class="label">幸运动物</span>
+            <span class="value">${data.luckyAnimal}</span>
+          </div>
+          <div class="line">
+            <span class="label">今日 Buff</span>
+            <span class="value">🟢 ${data.buff}</span>
+          </div>
+          <div class="line">
+            <span class="label">今日 Debuff</span>
+            <span class="value">🔴 ${data.debuff}</span>
+          </div>
+          <div class="line">
+            <span class="label">今日建议</span>
+            <span class="value">💡 ${data.advice}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSoup(data) {
+      return `
+        <div class="card-emoji">🍜</div>
+        <div class="card-title">今日毒汤</div>
+        <div class="card-subtitle">干了这碗，继续生活</div>
+        <div class="soup-text">“${data.text}”</div>
+        <div style="text-align:center;">
+          <span class="soup-tag">#${data.tag}</span>
+        </div>
+      `;
+    }
+
+    function renderDay(data) {
+      const itemsHtml = data.items.map(item => {
+        const [emoji, ...rest] = item.split(' ');
+        return `<div class="day-identity-item"><span class="emoji">${emoji}</span><span>${rest.join(' ')}</span></div>`;
+      }).join('');
+      return `
+        <div class="day-big">📅</div>
+        <div class="card-title">今天是什么日子</div>
+        <div class="card-subtitle">你的今日多重身份</div>
+        <div class="day-identities">${itemsHtml}</div>
+        <div class="day-footer">${data.footer}</div>
+      `;
+    }
+
+    function render(tab, data) {
+      switch (tab) {
+        case 'fortune': return renderFortune(data);
+        case 'soup':    return renderSoup(data);
+        case 'day':     return renderDay(data);
+      }
+    }
+
+    // ========================================================================
+    //  UI CONTROLLER
+    // ========================================================================
+
+    const card = document.getElementById('card');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const tabBtns = document.querySelectorAll('[data-tab]');
+    const toast = document.getElementById('toast');
+
+    let isAnimating = false;
+
+    function updateCard(tab, data, animate = true) {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const doUpdate = () => {
+        card.innerHTML = render(tab, data);
+        isAnimating = false;
+      };
+
+      if (animate) {
+        card.classList.add('fade-out');
+        setTimeout(() => {
+          doUpdate();
+          card.classList.remove('fade-out');
+        }, 200);
+      } else {
+        doUpdate();
+      }
+    }
+
+    function switchTab(tab) {
+      if (tab === currentTab) return;
+      currentTab = tab;
+
+      // Update tab buttons
+      tabBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+      });
+
+      // Generate and render
+      const data = generateForTab(tab);
+      currentData = data;
+      updateCard(tab, data);
+    }
+
+    function generateForTab(tab) {
+      switch (tab) {
+        case 'fortune': return generateFortune();
+        case 'soup':    return generateSoup();
+        case 'day':     return generateDay();
+      }
+    }
+
+    function refresh() {
+      const data = generateForTab(currentTab);
+      currentData = data;
+      updateCard(currentTab, data);
+
+      // Haptic feedback (mobile)
+      if (navigator.vibrate) navigator.vibrate(10);
+    }
+
+    // ========================================================================
+    //  SHARE
+    // ========================================================================
+
+    async function shareContent() {
+      const shareText = getShareText();
+
+      // Pure Canvas 2D share image — no html2canvas, no external CDN!
+      try {
+        const canvas = document.createElement('canvas');
+        const W = 1080, H = 1920;
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        // --- Background gradient ---
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0, '#0f0c29');
+        grad.addColorStop(0.5, '#302b63');
+        grad.addColorStop(1, '#24243e');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // --- Decorative circles ---
+        ctx.globalAlpha = 0.08;
+        ctx.fillStyle = '#7B68EE';
+        ctx.beginPath(); ctx.arc(200, 300, 250, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#FF6B35';
+        ctx.beginPath(); ctx.arc(900, 1600, 200, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#00C853';
+        ctx.beginPath(); ctx.arc(900, 400, 150, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // --- Border card ---
+        const cx = 60, cy = 160, cw = W - 120, ch = H - 320;
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 40;
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cw, ch, 32);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cw, ch, 32);
+        ctx.stroke();
+
+        // --- Draw content based on tab ---
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+
+        if (currentTab === 'fortune') {
+          const d = currentData;
+          // Emoji
+          ctx.font = '80px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+          ctx.fillText(d.emoji, W/2, 340);
+          // Stars
+          ctx.font = 'bold 52px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = d.rank.color;
+          ctx.fillText(d.rank.stars, W/2, 440);
+          // Label
+          ctx.font = '28px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.5)';
+          ctx.fillText(d.rank.label + ' · 今日运势', W/2, 490);
+
+          // Detail lines
+          ctx.font = '30px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'left';
+          const items = [
+            ['🎨 幸运色', d.color],
+            ['🔢 幸运数字', d.number],
+            ['🧭 幸运方向', d.direction],
+            ['🦊 幸运动物', d.luckyAnimal],
+            ['🟢 Buff', d.buff],
+            ['🔴 Debuff', d.debuff],
+            ['💡 建议', d.advice],
+          ];
+          items.forEach(([label, value], i) => {
+            const y = 560 + i * 74;
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.fillText(label, 120, y);
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            // Wrap long text
+            const maxW = cw - 300;
+            const text = String(value);
+            if (ctx.measureText(text).width > maxW) {
+              const mid = Math.floor(text.length / 2);
+              let split = text.indexOf('，', Math.floor(text.length * 0.3));
+              if (split < 0) split = text.indexOf(' ', Math.floor(text.length * 0.3));
+              if (split < 0) split = mid;
+              ctx.fillText(text.slice(0, split + 1), 310, y);
+              ctx.fillText(text.slice(split + 1), 310, y + 38);
+            } else {
+              ctx.fillText(text, 310, y);
+            }
+          });
+        }
+
+        else if (currentTab === 'soup') {
+          ctx.font = '70px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🍜', W/2, 360);
+          ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('今日毒汤', W/2, 440);
+          ctx.font = '22px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.fillText('干了这碗，继续生活', W/2, 480);
+
+          // Quote text with wrapping
+          ctx.font = '40px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.92)';
+          ctx.textAlign = 'center';
+          const quote = '“' + currentData.text + '”';
+          const maxW2 = cw - 80;
+          ctx.font = '40px system-ui, -apple-system, sans-serif';
+          if (ctx.measureText(quote).width > maxW2) {
+            ctx.font = '34px system-ui, -apple-system, sans-serif';
+          }
+          if (ctx.measureText(quote).width > maxW2) {
+            ctx.font = '30px system-ui, -apple-system, sans-serif';
+          }
+          wrapText(ctx, quote, W/2, 620, maxW2, 54);
+
+          // Tag
+          ctx.font = '24px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.35)';
+          ctx.fillText('#' + currentData.tag, W/2, 900);
+        }
+
+        else if (currentTab === 'day') {
+          ctx.font = '80px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('📅', W/2, 340);
+          ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('今天是什么日子', W/2, 430);
+          ctx.font = '22px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.fillText('你的今日多重身份', W/2, 470);
+
+          // Identity items
+          ctx.textAlign = 'left';
+          currentData.items.forEach((item, i) => {
+            const [emoji, ...rest] = item.split(' ');
+            const text = rest.join(' ');
+            const y = 560 + i * 100;
+            // Background box
+            ctx.fillStyle = 'rgba(255,255,255,0.06)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(100, y - 30, cw - 80, 72, 16);
+            ctx.fill();
+            ctx.stroke();
+            // Emoji
+            ctx.font = '40px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(emoji, 130, y + 12);
+            // Text
+            ctx.font = '30px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillText(text, 200, y + 12);
+          });
+
+          // Footer
+          ctx.textAlign = 'center';
+          ctx.font = '22px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.3)';
+          ctx.fillText(currentData.footer, W/2, 1000);
+        }
+
+        // --- Bottom branding ---
+        ctx.textAlign = 'center';
+        ctx.font = '24px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        const url = window.location.origin + window.location.pathname;
+        ctx.fillText('🎲 每日快乐盲盒 · ' + url, W/2, H - 80);
+        // Subtitle
+        ctx.font = '18px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillText('长按识别二维码 · 查看你的专属内容', W/2, H - 48);
+
+        // --- Convert to blob ---
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const file = new File([blob], 'fun-box-share.png', { type: 'image/png' });
+
+        // --- Try Web Share API (Android/iOS native) ---
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: '🎲 每日快乐盲盒',
+              text: shareText,
+              files: [file],
+            });
+            showToast('✅ 分享成功！');
+            return;
+          } catch (shareErr) {
+            if (shareErr.name !== 'AbortError') {
+              // Web Share failed, fall through to download
+            } else {
+              return; // User cancelled
+            }
+          }
+        }
+
+        // --- Fallback: Download image + copy text ---
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'fun-box-share.png';
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        // Also copy text to clipboard
+        try {
+          await navigator.clipboard.writeText(shareText + '\n\n' + url);
+          showToast('📸 图片已保存，文案已复制！');
+        } catch {
+          showToast('📸 图片已下载，去发朋友圈吧！');
+        }
+
+      } catch (err) {
+        // Ultimate fallback: just copy text
+        try {
+          await navigator.clipboard.writeText(shareText + '\n\n' + window.location.href);
+          showToast('📋 已复制到剪贴板！');
+        } catch {
+          showToast('📤 请截图保存后分享');
+        }
+      }
+    }
+
+    // Helper: draw wrapped text centered
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const chars = text.split('');
+      let line = '';
+      let ly = y;
+      for (const ch of chars) {
+        const test = line + ch;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          ctx.fillText(line, x, ly);
+          line = ch;
+          ly += lineHeight;
+        } else {
+          line = test;
+        }
+      }
+      if (line) ctx.fillText(line, x, ly);
+    }
+
+    function getShareText() {
+      const url = window.location.href;
+      switch (currentTab) {
+        case 'fortune': {
+          const d = currentData;
+          return `🎲 我的今日运势：${d.rank.stars} ${d.rank.label}\n🎨 幸运色：${d.color}\n🟢 Buff：${d.buff}\n🔴 Debuff：${d.debuff}\n💡 ${d.advice}\n\n来自 🎲 每日快乐盲盒\n${url}`;
+        }
+        case 'soup': {
+          return `🍜 干了这碗毒鸡汤：「${currentData.text}」\n#${currentData.tag}\n\n来自 🎲 每日快乐盲盒\n${url}`;
+        }
+        case 'day': {
+          const items = currentData.items.map(i => `  ${i}`).join('\n');
+          return `📅 今天我是：\n${items}\n\n${currentData.footer}\n\n来自 🎲 每日快乐盲盒\n${url}`;
+        }
+      }
+    }
+
+    // ========================================================================
+    //  TOAST
+    // ========================================================================
+
+    let toastTimer = null;
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    // ========================================================================
+    //  PARTICLES
+    // ========================================================================
+
+    function initParticles() {
+      const container = document.getElementById('particles');
+      const count = 20;
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.width = p.style.height = (2 + Math.random() * 4) + 'px';
+        p.style.animationDuration = (15 + Math.random() * 25) + 's';
+        p.style.animationDelay = (Math.random() * 20) + 's';
+        p.style.opacity = 0.2 + Math.random() * 0.4;
+        container.appendChild(p);
+      }
+    }
+
+    // ========================================================================
+    //  AUTO-REFRESH TIMER
+    // ========================================================================
+
+    let autoTimer = null;
+    let countdown = 30 * 60; // 30 minutes in seconds
+    const timerBar = document.getElementById('timerBar');
+
+    function startAutoTimer() {
+      countdown = 30 * 60;
+      updateTimerDisplay();
+      clearInterval(autoTimer);
+      autoTimer = setInterval(() => {
+        countdown--;
+        updateTimerDisplay();
+        if (countdown <= 0) {
+          refresh();
+          countdown = 30 * 60;
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const min = Math.floor(countdown / 60);
+      const sec = countdown % 60;
+      timerBar.textContent = `⏱ 下次自动刷新 · ${min}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    // ========================================================================
+    //  SWIPE GESTURE (mobile)
+    // ========================================================================
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 50;
+
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+
+      // Only horizontal swipes, not too vertical
+      if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dy) < Math.abs(dx) * 0.7) {
+        const tabs = ['fortune', 'soup', 'day'];
+        const idx = tabs.indexOf(currentTab);
+        if (dx > 0 && idx > 0) {
+          // Swipe right → previous
+          switchTab(tabs[idx - 1]);
+          if (navigator.vibrate) navigator.vibrate(8);
+        } else if (dx < 0 && idx < tabs.length - 1) {
+          // Swipe left → next
+          switchTab(tabs[idx + 1]);
+          if (navigator.vibrate) navigator.vibrate(8);
+        }
+      }
+    }, { passive: true });
+
+    // ========================================================================
+    //  KEYBOARD SHORTCUTS
+    // ========================================================================
+
+    document.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.key === 'r') {
+        e.preventDefault();
+        refresh();
+      }
+      if (e.key === 'ArrowLeft') {
+        const tabs = ['fortune', 'soup', 'day'];
+        const idx = tabs.indexOf(currentTab);
+        if (idx > 0) switchTab(tabs[idx - 1]);
+      }
+      if (e.key === 'ArrowRight') {
+        const tabs = ['fortune', 'soup', 'day'];
+        const idx = tabs.indexOf(currentTab);
+        if (idx < tabs.length - 1) switchTab(tabs[idx + 1]);
+      }
+    });
+
+    // ========================================================================
+    //  INIT
+    // ========================================================================
+
+    function init() {
+      initParticles();
+
+      // Tab buttons
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchTab(btn.dataset.tab);
+          if (navigator.vibrate) navigator.vibrate(5);
+        });
+      });
+
+      // Refresh
+      refreshBtn.addEventListener('click', refresh);
+
+      // Share
+      shareBtn.addEventListener('click', shareContent);
+
+      // Initial render
+      currentData = generateForTab('fortune');
+      updateCard('fortune', currentData, false);
+
+      // Auto-refresh
+      startAutoTimer();
+
+      // Reset timer on manual refresh
+      refreshBtn.addEventListener('click', () => {
+        countdown = 30 * 60;
+        updateTimerDisplay();
+      });
+
+      console.log('🎲 每日快乐盲盒已启动！');
+      console.log('💡 提示：左右滑动切换模式 · 空格键刷新 · 长按卡片分享');
+    }
+
+    // Wait for DOM
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
